@@ -1,66 +1,137 @@
-import React, { useState,useEffect } from 'react';
-import { View, Text, TextInput, Button, Alert } from 'react-native';
-import AsyncStorage from '@react-native-community/async-storage';
-import PushNotification from 'react-native-push-notification';
+import * as React from 'react';
+import { Text, View, StyleSheet, TextInput, TouchableOpacity, FlatList,Button } from 'react-native';
+import Constants from 'expo-constants';
 
-const App = () => {
-  const [reminderText, setReminderText] = useState('');
+export default function App() {
+  const [todo, setTodo] = React.useState([]);
+  const [value, setValue] = React.useState('');
 
-  useEffect(() => {
-    if(PushNotification){
-      PushNotification.createChannel(
-        {
-          channelId: 'reminder-channel', // Unique channel ID
-          channelName: 'Reminders', // Channel name
-          channelDescription: 'Channel for reminders', // Channel description
-          soundName: 'default', // Sound to play for notifications
-          importance: 4, // Notification importance (default value: 4)
-          vibrate: true, // Vibrate on notification
-        },
-        (created) => console.log(`Channel creation ${created ? 'success' : 'failed'}`)
-      );
-    }
-   
-  }, []);
-
-  const handleSaveReminder = async () => {
-    if (reminderText.trim() === '') {
-      Alert.alert('Error', 'Please enter a reminder text');
-      return;
-    }
-
-    try {
-      const reminders = await AsyncStorage.getItem('reminders');
-      let parsedReminders = reminders ? JSON.parse(reminders) : [];
-      parsedReminders.push(reminderText);
-
-      await AsyncStorage.setItem('reminders', JSON.stringify(parsedReminders));
-      setReminderText('');
-
-      // Schedule local notification
-      PushNotification.localNotification({
-        channelId: 'reminder-channel', // Channel ID for the notification
-        message: `Reminder: ${reminderText}`,
-      });
-
-      Alert.alert('Success', 'Reminder saved successfully');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save the reminder');
-    }
+  const toggleStatus = (id) => {
+    setTodo((prevTodo) =>
+      prevTodo.map((item) => {
+        if (item.id === id) {
+          return {
+            ...item,
+            status: !item.status,
+          };
+        }
+        return item;
+      })
+    );
   };
 
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ fontSize: 18, marginBottom: 10 }}>Enter Reminder:</Text>
-      <TextInput
-        style={{ height: 40, width: 250, borderColor: 'gray', borderWidth: 1, padding: 5 }}
-        onChangeText={(text) => setReminderText(text)}
-        value={reminderText}
-        placeholder="Enter your reminder text"
-      />
-      <Button title="Save Reminder" onPress={handleSaveReminder} />
+  const renderItem = ({ item }) => (
+    <View style={styles.cont2}>
+      <Text style={{ color: 'blue', fontSize: 20 }}>
+        {item.text}{' '}
+        <TouchableOpacity
+          style={[
+            styles.toggleButton,
+            item.status ? styles.toggleButtonActive : styles.toggleButtonInactive,
+          ]}
+          onPress={() => toggleStatus(item.id)}
+        >
+          <View style={item.status ? styles.toggleButtonInnerActive : styles.toggleButtonInnerInactive} />
+        </TouchableOpacity>
+      </Text>
     </View>
   );
-};
 
-export default App;
+  return (
+    <View style={styles.container}>
+      <Text style={styles.paragraph}>Todo App</Text>
+      <TextInput
+        onChangeText={(text) => setValue(text)}
+        style={styles.input}
+        placeholder="Type here to add a task"
+      />
+      <View style={styles.buttonContainer}>
+        <Button
+          onPress={() => setTodo([...todo, { id: Date.now(), text: value, status: false }])}
+          title="Submit"
+        />
+      </View>
+      <FlatList
+        data={todo}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id.toString()}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: Constants.statusBarHeight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 8,
+    marginVertical: 10,
+  },
+  paragraph: {
+    margin: 24,
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  input: {
+    height: 40,
+    borderWidth: 1,
+    borderColor: 'black',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 16,
+  },
+  buttonContainer: {
+    width: '50%',
+    borderWidth: 1,
+    borderColor: 'black',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  cont2: {
+    margin: 24,
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'yellow',
+    backgroundColor: 'lightgray',
+    borderWidth: 1,
+    borderColor: 'black',
+    borderRadius: 5,
+    textAlign: 'center',
+    padding: 10,
+  },
+  toggleButton: {
+    width: 40,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    marginRight: 8,
+    position: 'relative',
+  },
+  toggleButtonActive: {
+    backgroundColor: 'green',
+  },
+  toggleButtonInactive: {
+    borderWidth: 2,
+    borderColor: 'gray',
+  },
+  toggleButtonInnerInactive: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'white',
+    marginLeft: 2,
+  },
+  toggleButtonInnerActive: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'white',
+    marginLeft: 2,
+    position: 'absolute',
+    right: 2,
+  },
+});
